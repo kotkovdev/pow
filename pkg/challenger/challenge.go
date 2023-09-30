@@ -3,13 +3,11 @@ package challenger
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
 	"time"
 )
 
 const (
-	size          = 3
+	size          = 2
 	maxComplexity = 3
 )
 
@@ -52,27 +50,24 @@ func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time) Message {
 }
 
 // SolveRecursive calculates source hash during it not equal target and complexity less than max coplexity.
-func (c Challenger) SolveRecursive(source, target []byte) []byte {
-	var check func(source []byte, current, deep int) []byte
-	check = func(source []byte, current, deep int) []byte {
+func (c Challenger) SolveRecursive(source, target []byte) (result []byte) {
+	var check func(source []byte, current, deep int)
+	check = func(source []byte, current, deep int) {
 		for i := 0; i <= 255; i++ {
 			generatedHash := append(source, byte(i))
 			calculatedHash := c.hashFn(generatedHash)
 			if bytes.Equal(calculatedHash, target) {
-				fmt.Printf("found hash: %s", hex.EncodeToString(generatedHash))
-				return generatedHash
+				result = generatedHash
 			}
 		}
-
 		for i := 0; i <= 255; i++ {
 			if current < deep {
 				generatedHash := append(source, byte(i))
 				check(generatedHash, current+1, deep)
 			}
 		}
-
-		return []byte{}
 	}
 
-	return check(source, 1, maxComplexity)
+	check(source, 1, maxComplexity)
+	return
 }
