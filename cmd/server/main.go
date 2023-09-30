@@ -19,6 +19,7 @@ func main() {
 	flag.IntVar(&complexity, "complexity", 1, "set max complexity of puzzles")
 	flag.StringVar(&dictionaryPath, "path", "dictionary.txt", "sets quotes dictionary list path")
 	flag.StringVar(&address, "address", ":8080", "sets server address")
+	flag.Parse()
 
 	qouteService, err := quotes.New(dictionaryPath)
 	if err != nil {

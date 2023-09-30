@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/base64"
+	"flag"
 	"log/slog"
 	"net"
 	"strings"
@@ -13,7 +14,9 @@ import (
 )
 
 func main() {
-	const address = ":8080"
+	var address string
+	flag.StringVar(&address, "address", ":8080", "sets server connection address")
+	flag.Parse()
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		slog.Error("could not connect to server", "error", err, "address", address)
