@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"io"
 	"log/slog"
 	"net"
 	"sync"
@@ -71,19 +72,39 @@ func (s *server) Serve(address string) error {
 }
 
 func (s *server) Handle(ctx context.Context, conn net.Conn) {
-	slog.Info("handle request", "local", conn.LocalAddr(), "remote", conn.RemoteAddr())
+	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if err := s.handle(conn); err != nil {
+				if !errors.Is(err, io.EOF) {
+					slog.Error(err.Error())
+				}
+				return
+			}
+		}
+	}
+}
+
+func (s *server) handle(conn net.Conn) error {
 	body, err := bufio.NewReader(conn).ReadBytes(byte(util.MessageDelimeter))
 	if err != nil {
-		slog.Error("error read message", "error", err)
+		return err
 	}
 
-	slog.Info("body", "body", body)
+	slog.Info("handle request", "remote", conn.RemoteAddr(), "body", body)
+
 	if string(body) == string(util.MessageDelimeter) {
 		s.HandleConnection(conn)
-		return
+	} else {
+		s.HandleSolution(body, conn)
 	}
 
-	s.HandleSolution(body, conn)
+	return nil
 }
 
 func (s *server) HandleConnection(conn net.Conn) {
@@ -92,7 +113,9 @@ func (s *server) HandleConnection(conn net.Conn) {
 		slog.Error(err.Error())
 		return
 	}
+
 	slog.Info("generated puzzle", "source", hex.EncodeToString(puzzle.Source), "target", hex.EncodeToString(puzzle.Target))
+
 	sourceMsg := []byte(base64.StdEncoding.EncodeToString(puzzle.Source))
 	targetMsg := []byte(base64.StdEncoding.EncodeToString(puzzle.Target))
 	message := append(append(sourceMsg, util.Separator), targetMsg...)
@@ -100,9 +123,13 @@ func (s *server) HandleConnection(conn net.Conn) {
 		slog.Error(err.Error())
 		return
 	}
+
 	slog.Info("sent response", "message", message)
 }
 
 func (s *server) HandleSolution(body []byte, conn net.Conn) {
-	util.Send([]byte("asdasd"), conn)
+	slog.Info("handle solution", "body", body)
+	if err := util.Send([]byte("response"), conn); err != nil {
+		slog.Error("could not send response")
+	}
 }
