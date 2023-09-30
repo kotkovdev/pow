@@ -14,20 +14,28 @@ import (
 
 	"github.com/kotkovdev/pow/pkg/challenger"
 
-	"github.com/kotkovdev/pow/internal/quotes"
 	"github.com/kotkovdev/pow/internal/util"
 )
+
+type QuotesService interface {
+	GetRandomQuote() (string, error)
+}
+
+type Challenger interface {
+	CreatePuzzle(req []byte, timestamp time.Time, size int) (*challenger.Puzzle, error)
+	SolveRecursive(source, target []byte) []byte
+}
 
 // connection describes user connection.
 type connection struct {
 	expires time.Time
 }
 
-// server is a server instance.
-type server struct {
-	challenger    challenger.Challenger
+// Server is a server instance.
+type Server struct {
+	challenger    Challenger
+	quotesService QuotesService
 	requests      sync.Map
-	quotesService *quotes.Service
 	complexity    int
 }
 
@@ -41,9 +49,9 @@ const (
 )
 
 // New returns new server instance.
-func New(quotes *quotes.Service, complexity int) server {
-	return server{
-		challenger:    challenger.NewChallenger(challenger.DefaultSHA256Func),
+func New(quotes QuotesService, challenger Challenger, complexity int) Server {
+	return Server{
+		challenger:    challenger,
 		requests:      sync.Map{},
 		quotesService: quotes,
 		complexity:    complexity,
@@ -51,7 +59,7 @@ func New(quotes *quotes.Service, complexity int) server {
 }
 
 // Serve runs server listener.
-func (s *server) Serve(address string) error {
+func (s *Server) Serve(address string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -79,7 +87,7 @@ func (s *server) Serve(address string) error {
 }
 
 // Handle handles incomming request.
-func (s *server) Handle(ctx context.Context, conn net.Conn) {
+func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 	ctx, cancel := context.WithTimeout(ctx, keepAliveTimeout)
 	defer cancel()
 
@@ -99,7 +107,7 @@ func (s *server) Handle(ctx context.Context, conn net.Conn) {
 }
 
 // handle handles incomming request.
-func (s *server) handle(conn net.Conn) error {
+func (s *Server) handle(conn net.Conn) error {
 	body, err := util.Read(conn)
 	if err != nil {
 		return err
@@ -117,7 +125,7 @@ func (s *server) handle(conn net.Conn) error {
 }
 
 // HandleConnection handles incomming request and generates puzzle for solve it on client side.
-func (s *server) HandleConnection(conn net.Conn) {
+func (s *Server) HandleConnection(conn net.Conn) {
 	puzzle, err := s.challenger.CreatePuzzle([]byte(conn.RemoteAddr().String()), time.Now(), s.complexity)
 	if err != nil {
 		slog.Error(err.Error())
@@ -149,10 +157,11 @@ func (s *server) HandleConnection(conn net.Conn) {
 }
 
 // HandleSolution checks solution answer and sends random phrase.
-func (s *server) HandleSolution(body []byte, conn net.Conn) {
+func (s *Server) HandleSolution(body []byte, conn net.Conn) {
 	value, ok := s.requests.Load(string(body))
 	if !ok {
 		slog.Error("request not allowed", "payload", string(body))
+		return
 	}
 	slog.Info("request allowed")
 	switch connect := value.(type) {
@@ -170,9 +179,11 @@ func (s *server) HandleSolution(body []byte, conn net.Conn) {
 	quote, err := s.quotesService.GetRandomQuote()
 	if err != nil {
 		slog.Error("coudl not get quote", "error", err)
+		return
 	}
 
 	if err := util.Send([]byte(quote), conn); err != nil {
 		slog.Error("could not send response")
+		return
 	}
 }

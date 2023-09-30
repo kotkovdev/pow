@@ -6,6 +6,7 @@ import (
 
 	"github.com/kotkovdev/pow/internal/quotes"
 	"github.com/kotkovdev/pow/internal/server"
+	"github.com/kotkovdev/pow/pkg/challenger"
 )
 
 func main() {
@@ -24,7 +25,9 @@ func main() {
 		slog.Error("could not init quotes service", "error", err)
 	}
 
-	server := server.New(qouteService, complexity)
+	chal := challenger.NewChallenger(challenger.DefaultSHA256Func)
+
+	server := server.New(qouteService, chal, complexity)
 	if err := server.Serve(address); err != nil {
 		slog.Error("could not start server", "error", err)
 	}

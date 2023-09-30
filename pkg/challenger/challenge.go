@@ -47,7 +47,7 @@ func NewChallenger(hashFunc HashFunc) Challenger {
 }
 
 // CreatePuzzle creates puzzle challenge for client.
-func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*Puzzle, error) {
+func (c Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*Puzzle, error) {
 	payload := append(req, []byte(timestamp.String())...)
 	salt := make([]byte, 10)
 	for idx := range salt {
