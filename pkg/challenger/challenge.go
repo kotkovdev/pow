@@ -51,7 +51,9 @@ func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*P
 	}
 
 	original := c.hashFn(append(payload, salt...))
-	source := original[:len(original)-size]
+	originalCopy := make([]byte, len(original))
+	copy(originalCopy, original)
+	source := originalCopy[:len(originalCopy)-size]
 	target := c.hashFn(original)
 	msg := &Puzzle{
 		Source:   source,
@@ -62,20 +64,42 @@ func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*P
 }
 
 // SolveRecursive calculates source hash during it not equal target and complexity less than max coplexity.
+// func (c Challenger) SolveRecursive(source, target []byte) (result []byte) {
+// 	var check func(source []byte, current, deep int)
+// 	check = func(source []byte, current, deep int) {
+// 		for i := 0; i <= 255; i++ {
+// 			generatedHash := append(source, byte(i))
+// 			calculatedHash := c.hashFn(generatedHash)
+// 			if string(calculatedHash) == string(target) {
+// 				result = generatedHash
+// 			}
+// 		}
+// 		for i := 0; i <= 255; i++ {
+// 			if current < deep {
+// 				generatedHash := append(source, byte(i))
+// 				check(generatedHash, current+1, deep)
+// 			}
+// 		}
+// 	}
+
+// 	check(source, 1, maxComplexity)
+// 	return
+// }
+
 func (c Challenger) SolveRecursive(source, target []byte) (result []byte) {
-	var check func(source []byte, current, deep int)
-	check = func(source []byte, current, deep int) {
+	var check func(source []byte, current, depth int)
+	check = func(source []byte, current, depth int) {
 		for i := 0; i <= 255; i++ {
 			generatedHash := append(source, byte(i))
 			calculatedHash := c.hashFn(generatedHash)
 			if bytes.Equal(calculatedHash, target) {
-				result = generatedHash
+				generatedHashCopy := make([]byte, len(generatedHash))
+				copy(generatedHashCopy, generatedHash)
+				result = generatedHashCopy
+				return
 			}
-		}
-		for i := 0; i <= 255; i++ {
-			if current < deep {
-				generatedHash := append(source, byte(i))
-				check(generatedHash, current+1, deep)
+			if current < depth {
+				check(append(source, byte(i)), current+1, depth)
 			}
 		}
 	}

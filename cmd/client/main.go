@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/base64"
-	"encoding/hex"
 	"log/slog"
 	"net"
 	"strings"
@@ -50,20 +49,13 @@ func main() {
 
 	chal := challenger.NewChallenger(challenger.DefaultSHA256Func)
 	answer := chal.SolveRecursive(source, target)
-	slog.Info("found solution", "answer", hex.EncodeToString(answer), "source", hex.EncodeToString(source), "target", hex.EncodeToString(target))
-
-	// conn, err = net.Dial("tcp", address)
-	// if err != nil {
-	// 	slog.Error("could not connect to server", "error", err, "address", address)
-	// 	return
-	// }
-	// defer conn.Close()
 
 	answerStr := base64.StdEncoding.EncodeToString(answer)
 	if err := util.Send([]byte(answerStr), conn); err != nil {
 		slog.Error("could not send request", "error", err)
 		return
 	}
+	slog.Info("found solution", "answer", answerStr, "source", sourceStr, "target", targetStr)
 	slog.Info("sent answer request")
 
 	resp, err = bufio.NewReader(conn).ReadString(util.MessageDelimeter)
@@ -72,5 +64,4 @@ func main() {
 		return
 	}
 	slog.Info("got response", "response", resp)
-	return
 }
