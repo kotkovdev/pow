@@ -89,6 +89,7 @@ func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*P
 func (c Challenger) SolveRecursive(source, target []byte) (result []byte) {
 	var check func(source []byte, current, depth int)
 	check = func(source []byte, current, depth int) {
+	loop:
 		for i := 0; i <= 255; i++ {
 			generatedHash := append(source, byte(i))
 			calculatedHash := c.hashFn(generatedHash)
@@ -96,7 +97,7 @@ func (c Challenger) SolveRecursive(source, target []byte) (result []byte) {
 				generatedHashCopy := make([]byte, len(generatedHash))
 				copy(generatedHashCopy, generatedHash)
 				result = generatedHashCopy
-				return
+				break loop
 			}
 			if current < depth {
 				check(append(source, byte(i)), current+1, depth)

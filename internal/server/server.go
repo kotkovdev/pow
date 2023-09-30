@@ -17,7 +17,6 @@ import (
 )
 
 type connection struct {
-	allowed bool
 	expires time.Time
 }
 
@@ -49,11 +48,6 @@ func (s *server) Serve(address string) error {
 		return errors.Wrap(ErrAccept, err.Error())
 	}
 	defer listener.Close()
-
-	// garbage collector.
-	go func() {
-
-	}()
 
 	for {
 		conn, err := listener.Accept()
@@ -140,18 +134,22 @@ func (s *server) HandleConnection(conn net.Conn) {
 }
 
 func (s *server) HandleSolution(body []byte, conn net.Conn) {
-	payloadHash, err := base64.StdEncoding.DecodeString(string(body))
-	if err != nil {
-		slog.Error("could not decode answer hash", "error", err)
-		return
-	}
-	_ = payloadHash
-
-	req, ok := s.requests.Load(string(body))
+	value, ok := s.requests.Load(string(body))
 	if !ok {
 		slog.Error("request not allowed", "payload", string(body))
 	}
-	_ = req
+	slog.Info("request allowed")
+	switch connect := value.(type) {
+	case connection:
+		defer s.requests.Delete(string(body))
+		if connect.expires.Before(time.Now()) {
+			slog.Error("connection expired")
+			return
+		}
+	default:
+		slog.Error("could not cast connection")
+		return
+	}
 
 	if err := util.Send([]byte("response"), conn); err != nil {
 		slog.Error("could not send response")
