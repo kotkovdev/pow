@@ -1,3 +1,4 @@
+// package challenger implements challenge response.
 package challenger
 
 import (
@@ -9,24 +10,31 @@ import (
 )
 
 const (
+	// maxComplexity is a max depth for solving puzzle recursion.
 	maxComplexity = 3
-	alphabet      = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+
+	// alphabet is a alphabet for generating hash salt.
+	alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
 )
 
+// Puzzle is a generated puzzle.
 type Puzzle struct {
 	Original []byte
 	Target   []byte
 	Source   []byte
 }
 
+// HashFunc is a function for hashing provided bytes.
 type HashFunc func(body []byte) []byte
 
+// DefaultSHA256Func returns sha256 hashed bytes.
 func DefaultSHA256Func(body []byte) []byte {
 	hasher := sha256.New()
 	hasher.Write(body)
 	return hasher.Sum(nil)
 }
 
+// Challenger is a challenge instance.
 type Challenger struct {
 	hashFn HashFunc
 }
@@ -64,28 +72,6 @@ func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*P
 }
 
 // SolveRecursive calculates source hash during it not equal target and complexity less than max coplexity.
-// func (c Challenger) SolveRecursive(source, target []byte) (result []byte) {
-// 	var check func(source []byte, current, deep int)
-// 	check = func(source []byte, current, deep int) {
-// 		for i := 0; i <= 255; i++ {
-// 			generatedHash := append(source, byte(i))
-// 			calculatedHash := c.hashFn(generatedHash)
-// 			if string(calculatedHash) == string(target) {
-// 				result = generatedHash
-// 			}
-// 		}
-// 		for i := 0; i <= 255; i++ {
-// 			if current < deep {
-// 				generatedHash := append(source, byte(i))
-// 				check(generatedHash, current+1, deep)
-// 			}
-// 		}
-// 	}
-
-// 	check(source, 1, maxComplexity)
-// 	return
-// }
-
 func (c Challenger) SolveRecursive(source, target []byte) (result []byte) {
 	var check func(source []byte, current, depth int)
 	check = func(source []byte, current, depth int) {

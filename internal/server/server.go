@@ -1,3 +1,4 @@
+// package server provides TCP server implementation including proof of work functionally.
 package server
 
 import (
@@ -16,21 +17,27 @@ import (
 	"github.com/kotkovdev/pow/internal/util"
 )
 
+// connection describes user connection.
 type connection struct {
 	expires time.Time
 }
 
+// server is a server instance.
 type server struct {
 	challenger challenger.Challenger
 	requests   sync.Map
 }
 
 const (
-	protocol         = "tcp"
+	// protocol is a server protocol.
+	protocol = "tcp"
+	// keepAliveTimeout is a connection keep alive time.
 	keepAliveTimeout = time.Second * 5
-	requestDeadline  = time.Second * 3
+	// requestDeadline is a time after that the request is accepted expired.
+	requestDeadline = time.Second * 3
 )
 
+// New returns new server instance.
 func New() server {
 	return server{
 		challenger: challenger.NewChallenger(challenger.DefaultSHA256Func),
@@ -38,6 +45,7 @@ func New() server {
 	}
 }
 
+// Serve runs server listener.
 func (s *server) Serve(address string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -65,6 +73,7 @@ func (s *server) Serve(address string) error {
 	}
 }
 
+// Handle handles incomming request.
 func (s *server) Handle(ctx context.Context, conn net.Conn) {
 	ctx, cancel := context.WithTimeout(ctx, keepAliveTimeout)
 	defer cancel()
@@ -84,8 +93,8 @@ func (s *server) Handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
+// handle handles incomming request.
 func (s *server) handle(conn net.Conn) error {
-	// body, err := bufio.NewReader(conn).ReadBytes(byte(util.MessageDelimeter))
 	body, err := util.Read(conn)
 	if err != nil {
 		return err
@@ -102,6 +111,7 @@ func (s *server) handle(conn net.Conn) error {
 	return nil
 }
 
+// HandleConnection handles incomming request and generates puzzle for solve it on client side.
 func (s *server) HandleConnection(conn net.Conn) {
 	puzzle, err := s.challenger.CreatePuzzle([]byte(conn.RemoteAddr().String()), time.Now(), 2)
 	if err != nil {
@@ -133,6 +143,7 @@ func (s *server) HandleConnection(conn net.Conn) {
 	slog.Info("sent response", "message", message)
 }
 
+// HandleSolution checks solution answer and sends random phrase.
 func (s *server) HandleSolution(body []byte, conn net.Conn) {
 	value, ok := s.requests.Load(string(body))
 	if !ok {
