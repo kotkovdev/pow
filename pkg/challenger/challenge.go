@@ -2,18 +2,18 @@ package challenger
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
+	"math/big"
 	"time"
 )
 
 const (
-	size          = 2
 	maxComplexity = 3
+	alphabet      = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
 )
 
-type Request struct{}
-
-type Message struct {
+type Puzzle struct {
 	Original []byte
 	Target   []byte
 	Source   []byte
@@ -31,22 +31,34 @@ type Challenger struct {
 	hashFn HashFunc
 }
 
+// NewChallenger returns challenger instance.
 func NewChallenger(hashFunc HashFunc) Challenger {
 	return Challenger{
 		hashFn: hashFunc,
 	}
 }
 
-func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time) Message {
-	original := c.hashFn(append(req, []byte(timestamp.String())...))
+// CreatePuzzle creates puzzle challenge for client.
+func (c *Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*Puzzle, error) {
+	payload := append(req, []byte(timestamp.String())...)
+	salt := make([]byte, 10)
+	for idx := range salt {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet)-1)))
+		if err != nil {
+			return nil, err
+		}
+		salt[idx] = byte(alphabet[num.Int64()])
+	}
+
+	original := c.hashFn(append(payload, salt...))
 	source := original[:len(original)-size]
 	target := c.hashFn(original)
-	msg := Message{
+	msg := &Puzzle{
 		Source:   source,
 		Target:   target,
 		Original: original,
 	}
-	return msg
+	return msg, nil
 }
 
 // SolveRecursive calculates source hash during it not equal target and complexity less than max coplexity.
