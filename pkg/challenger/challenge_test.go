@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kotkovdev/pow/pkg/challenger"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kotkovdev/pow/pkg/challenger"
 )
 
-func TestHash(t *testing.T) {
+func TestPuzzleSolving(t *testing.T) {
 	chal := challenger.NewChallenger(challenger.DefaultSHA256Func)
 	msg, err := chal.CreatePuzzle([]byte("some request"), time.Now(), 2)
 	assert.NoError(t, err)
