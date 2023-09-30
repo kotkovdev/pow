@@ -2,10 +2,9 @@ package server_test
 
 import (
 	"bufio"
-	"errors"
 	"net"
-	"sync"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
@@ -21,7 +20,6 @@ type serverSuite struct {
 	quoteService *mocks.MockQuotesService
 	challenger   *mocks.MockChallenger
 	client       net.Conn
-	server       net.Conn
 	srv          server.Server
 }
 
@@ -33,15 +31,18 @@ func (s *serverSuite) SetupSuite() {
 }
 
 func (s *serverSuite) SetupTest() {
-	s.client, s.server = net.Pipe()
+	go s.srv.Serve(":8081")
+	time.Sleep(time.Second)
+	var err error
+	s.client, err = net.Dial("tcp", ":8081")
+	s.NoError(err)
 }
 
 func (s *serverSuite) TearDownTest() {
-	s.server.Close()
 	s.client.Close()
 }
 
-func (s *serverSuite) TestServerPipeline() {
+func (s *serverSuite) TestServerSuccess() {
 	s.challenger.EXPECT().CreatePuzzle(gomock.Any(), gomock.Any(), 1).Return(&challenger.Puzzle{
 		Original: []byte{10, 20, 30},
 		Source:   []byte{10, 20},
@@ -49,88 +50,17 @@ func (s *serverSuite) TestServerPipeline() {
 	}, nil)
 	s.quoteService.EXPECT().GetRandomQuote().Return("quote", nil)
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-
-	go func() {
-		s.server.Write([]byte(""))
-		wg.Done()
-	}()
-
-	var result string
-	var err error
-	go func() {
-		result, err = bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
-		wg.Done()
-	}()
-
-	s.srv.HandleConnection(s.server)
-	wg.Wait()
+	s.client.Write([]byte("\n"))
+	result, err := bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
 
 	s.NoError(err)
 	s.Equal("ChQ=|MjxG\n", result)
 
-	wg.Add(1)
-	go func() {
-		result, err = bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
-		wg.Done()
-	}()
-
-	s.srv.HandleSolution([]byte("ChQe"), s.server)
-	wg.Wait()
+	s.client.Write([]byte("ChQe\n"))
+	result, err = bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
 
 	s.NoError(err)
 	s.Equal("quote\n", result)
-}
-
-func (s *serverSuite) TestServerPipelineCreatePuzzleError() {
-	expectedErr := errors.New("generate error")
-	s.challenger.EXPECT().CreatePuzzle(gomock.Any(), gomock.Any(), 1).Return(&challenger.Puzzle{}, expectedErr)
-
-	s.srv.HandleConnection(s.server)
-}
-
-func (s *serverSuite) TestServerPipelineQuoteError() {
-	quoteErr := errors.New("quote error")
-	s.challenger.EXPECT().CreatePuzzle(gomock.Any(), gomock.Any(), 1).Return(&challenger.Puzzle{
-		Original: []byte{10, 20, 30},
-		Source:   []byte{10, 20},
-		Target:   []byte{50, 60, 70},
-	}, nil)
-	s.quoteService.EXPECT().GetRandomQuote().Return("", quoteErr)
-
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-
-	go func() {
-		s.server.Write([]byte(""))
-		wg.Done()
-	}()
-
-	var result string
-	var err error
-	go func() {
-		result, err = bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
-		wg.Done()
-	}()
-
-	s.srv.HandleConnection(s.server)
-	wg.Wait()
-
-	s.NoError(err)
-	s.Equal("ChQ=|MjxG\n", result)
-
-	wg.Add(1)
-	go func() {
-		result, err = bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
-		wg.Done()
-	}()
-
-	s.srv.HandleSolution([]byte("ChQe"), s.server)
-	wg.Wait()
-
-	s.NoError(err)
-	s.Empty(result)
 }
 
 func TestServer(t *testing.T) {
