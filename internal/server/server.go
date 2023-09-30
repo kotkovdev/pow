@@ -14,6 +14,7 @@ import (
 
 	"github.com/kotkovdev/pow/pkg/challenger"
 
+	"github.com/kotkovdev/pow/internal/quotes"
 	"github.com/kotkovdev/pow/internal/util"
 )
 
@@ -24,8 +25,10 @@ type connection struct {
 
 // server is a server instance.
 type server struct {
-	challenger challenger.Challenger
-	requests   sync.Map
+	challenger    challenger.Challenger
+	requests      sync.Map
+	quotesService *quotes.Service
+	complexity    int
 }
 
 const (
@@ -38,10 +41,12 @@ const (
 )
 
 // New returns new server instance.
-func New() server {
+func New(quotes *quotes.Service, complexity int) server {
 	return server{
-		challenger: challenger.NewChallenger(challenger.DefaultSHA256Func),
-		requests:   sync.Map{},
+		challenger:    challenger.NewChallenger(challenger.DefaultSHA256Func),
+		requests:      sync.Map{},
+		quotesService: quotes,
+		complexity:    complexity,
 	}
 }
 
@@ -113,7 +118,7 @@ func (s *server) handle(conn net.Conn) error {
 
 // HandleConnection handles incomming request and generates puzzle for solve it on client side.
 func (s *server) HandleConnection(conn net.Conn) {
-	puzzle, err := s.challenger.CreatePuzzle([]byte(conn.RemoteAddr().String()), time.Now(), 2)
+	puzzle, err := s.challenger.CreatePuzzle([]byte(conn.RemoteAddr().String()), time.Now(), s.complexity)
 	if err != nil {
 		slog.Error(err.Error())
 		return
@@ -162,7 +167,12 @@ func (s *server) HandleSolution(body []byte, conn net.Conn) {
 		return
 	}
 
-	if err := util.Send([]byte("response"), conn); err != nil {
+	quote, err := s.quotesService.GetRandomQuote()
+	if err != nil {
+		slog.Error("coudl not get quote", "error", err)
+	}
+
+	if err := util.Send([]byte(quote), conn); err != nil {
 		slog.Error("could not send response")
 	}
 }
