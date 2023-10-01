@@ -10,15 +10,20 @@ This project impelements proof or work concept for DDOS service protection and r
 
 
 ## Explanation
-In this impelentation using challenge-response algorithm based on sha256 hashed puzzles. Client get part of soruce hash and target hash, so client must generate ending of soruce hash duringh sha256 of generated hash is not equal target hash.
-Sha256 was selected because is it fast, secured and popular asynch hashing algorithm which has implementation on many programming languages.
-[Clients puzzles protocol](https://en.wikipedia.org/wiki/Client_Puzzle_Protocol) was selected because this is simple and agile controlled workload client task.
-For example while big attack we can change complexity of task to x, so algorithm compexity will be O(n<sup>x</sup>)
+In this impelentation using challenge-response protocol based on sha256 hashed puzzles. Client get part of source hash and target hash, so client must generate ending of soruce hash duringh sha256 of generated hash is not equal target hash.
+[Clients puzzles protocol](https://en.wikipedia.org/wiki/Client_Puzzle_Protocol) was selected because this is simple and agile controlled workload client task. [Patent](https://patents.google.com/patent/US7197639) expired in early 2020, so now it's classic solution for proof of work implementation.
+For example while big attack we can change complexity of task to x, so algorithm compexity will be O(n<sup>x</sup>).
+Sha256 was selected as default hasing algorithm because is it fast, secured and popular asynch hashing algorithm which has implementation on many programming languages.
 
 ## Running
 ```
 docker-compsoe up -d server # starts server
 docker-compose up client # starts container with client and makes reqeust
+```
+
+## Testing
+```
+make test
 ```
 
 ## Evoltion

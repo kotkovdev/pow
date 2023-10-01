@@ -5,3 +5,7 @@ server:
 .phony: client
 client:
 	go run cmd/client/main.go
+
+.phony: test
+test:
+	go test ./... -race
