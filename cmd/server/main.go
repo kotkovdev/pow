@@ -26,7 +26,7 @@ func main() {
 		slog.Error("could not init quotes service", "error", err)
 	}
 
-	chal := challenger.NewChallenger(challenger.DefaultSHA256Func)
+	chal := challenger.NewChallenger(challenger.DefaultSHA256Func, challenger.DefaultSaltGenerateFunc)
 
 	server := server.New(qouteService, chal, complexity)
 	if err := server.Serve(address); err != nil {

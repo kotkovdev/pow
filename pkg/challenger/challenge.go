@@ -34,21 +34,11 @@ func DefaultSHA256Func(body []byte) []byte {
 	return hasher.Sum(nil)
 }
 
-// Challenger is a challenge instance.
-type Challenger struct {
-	hashFn HashFunc
-}
+// SaltGenerateFunc is a function for generating salt.
+type SaltGenerateFunc func() ([]byte, error)
 
-// NewChallenger returns challenger instance.
-func NewChallenger(hashFunc HashFunc) Challenger {
-	return Challenger{
-		hashFn: hashFunc,
-	}
-}
-
-// CreatePuzzle creates puzzle challenge for client.
-func (c Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*Puzzle, error) {
-	payload := append(req, []byte(timestamp.String())...)
+// DefaultSaltGenerateFunc is a default random salt generating function.
+func DefaultSaltGenerateFunc() ([]byte, error) {
 	salt := make([]byte, 10)
 	for idx := range salt {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet)-1)))
@@ -56,6 +46,30 @@ func (c Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*Pu
 			return nil, err
 		}
 		salt[idx] = byte(alphabet[num.Int64()])
+	}
+	return salt, nil
+}
+
+// Challenger is a challenge instance.
+type Challenger struct {
+	hashFn           HashFunc
+	saltGenerateFunc SaltGenerateFunc
+}
+
+// NewChallenger returns challenger instance.
+func NewChallenger(hashFunc HashFunc, saltGenFunc SaltGenerateFunc) Challenger {
+	return Challenger{
+		hashFn:           hashFunc,
+		saltGenerateFunc: saltGenFunc,
+	}
+}
+
+// CreatePuzzle creates puzzle challenge for client.
+func (c Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*Puzzle, error) {
+	payload := append(req, []byte(timestamp.String())...)
+	salt, err := c.saltGenerateFunc()
+	if err != nil {
+		return nil, err
 	}
 
 	original := c.hashFn(append(payload, salt...))

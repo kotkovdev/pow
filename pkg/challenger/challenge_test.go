@@ -1,6 +1,9 @@
 package challenger_test
 
 import (
+	"crypto/sha512"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,11 +13,56 @@ import (
 )
 
 func TestPuzzleSolving(t *testing.T) {
-	chal := challenger.NewChallenger(challenger.DefaultSHA256Func)
-	msg, err := chal.CreatePuzzle([]byte("some request"), time.Now(), 2)
-	assert.NoError(t, err)
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 
-	result := chal.SolveRecursive(msg.Source, msg.Target)
+		t.Run("invalid hash provided", func(t *testing.T) {
+			t.Parallel()
 
-	assert.Equal(t, msg.Original, result)
+			chal := challenger.NewChallenger(challenger.DefaultSHA256Func, challenger.DefaultSaltGenerateFunc)
+			msg, err := chal.CreatePuzzle([]byte("some request"), time.Now(), 2)
+			assert.NoError(t, err)
+
+			chal2 := challenger.NewChallenger(func(body []byte) []byte {
+				hasher := sha512.New()
+				hasher.Write(body)
+				return hasher.Sum(nil)
+			}, challenger.DefaultSaltGenerateFunc)
+
+			result := chal2.SolveRecursive(msg.Source, msg.Target)
+
+			assert.Nil(t, result)
+		})
+
+		for i := 0; i < 5; i++ {
+			t.Run(fmt.Sprintf("test_case_%d", i), func(t *testing.T) {
+				t.Parallel()
+
+				chal := challenger.NewChallenger(challenger.DefaultSHA256Func, challenger.DefaultSaltGenerateFunc)
+				msg, err := chal.CreatePuzzle([]byte("some request"), time.Now(), 2)
+				assert.NoError(t, err)
+
+				result := chal.SolveRecursive(msg.Source, msg.Target)
+
+				assert.Equal(t, msg.Original, result)
+			})
+		}
+	})
+
+	t.Run("fail", func(t *testing.T) {
+		t.Parallel()
+		t.Run("generate puzzle returns error", func(t *testing.T) {
+			t.Parallel()
+
+			expectedErr := errors.New("error generate puzzle")
+
+			chal := challenger.NewChallenger(challenger.DefaultSHA256Func, func() ([]byte, error) {
+				return nil, expectedErr
+			})
+
+			msg, err := chal.CreatePuzzle([]byte("some request"), time.Now(), 2)
+			assert.Nil(t, msg)
+			assert.ErrorIs(t, err, expectedErr)
+		})
+	})
 }

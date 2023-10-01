@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	chal := challenger.NewChallenger(challenger.DefaultSHA256Func)
+	chal := challenger.NewChallenger(challenger.DefaultSHA256Func, challenger.DefaultSaltGenerateFunc)
 	answer := chal.SolveRecursive(source, target)
 
 	answerStr := base64.StdEncoding.EncodeToString(answer)
