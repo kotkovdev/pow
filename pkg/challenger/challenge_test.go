@@ -34,19 +34,23 @@ func TestPuzzleSolving(t *testing.T) {
 			assert.Nil(t, result)
 		})
 
-		for i := 0; i < 5; i++ {
-			t.Run(fmt.Sprintf("test_case_%d", i), func(t *testing.T) {
-				t.Parallel()
+		t.Run("multiple cases", func(t *testing.T) {
+			t.Parallel()
 
-				chal := challenger.NewChallenger(challenger.DefaultSHA256Func, challenger.DefaultSaltGenerateFunc)
-				msg, err := chal.CreatePuzzle([]byte("some request"), time.Now(), 2)
-				assert.NoError(t, err)
+			for i := 0; i < 5; i++ {
+				t.Run(fmt.Sprintf("test_case_%d", i), func(t *testing.T) {
+					t.Parallel()
 
-				result := chal.SolveRecursive(msg.Source, msg.Target)
+					chal := challenger.NewChallenger(challenger.DefaultSHA256Func, challenger.DefaultSaltGenerateFunc)
+					msg, err := chal.CreatePuzzle([]byte("some request"), time.Now(), 2)
+					assert.NoError(t, err)
 
-				assert.Equal(t, msg.Original, result)
-			})
-		}
+					result := chal.SolveRecursive(msg.Source, msg.Target)
+
+					assert.Equal(t, msg.Original, result)
+				})
+			}
+		})
 	})
 
 	t.Run("fail", func(t *testing.T) {

@@ -73,9 +73,9 @@ func (c Challenger) CreatePuzzle(req []byte, timestamp time.Time, size int) (*Pu
 	}
 
 	original := c.hashFn(append(payload, salt...))
-	originalCopy := make([]byte, len(original))
-	copy(originalCopy, original)
-	source := originalCopy[:len(originalCopy)-size]
+	source := make([]byte, len(original))
+	copy(source, original)
+	source = source[:len(source)-size]
 	target := c.hashFn(original)
 	msg := &Puzzle{
 		Source:   source,
