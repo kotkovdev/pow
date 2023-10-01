@@ -1,0 +1,18 @@
+version: "3.8"
+
+services: 
+  server:
+    build: ./
+    container_name: pow_server
+    command: [/app/bin/server]
+    networks:
+      - servcies
+  client:
+    build: ./
+    container_name: pow_client
+    command: [/app/bin/client, -address, pow_server:8080]
+    networks:
+      - servcies
+networks:
+  servcies:
+    name: services
