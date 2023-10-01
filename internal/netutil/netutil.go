@@ -1,5 +1,5 @@
-// package util provides helping functions.
-package util
+// package netutil provides helping functions.
+package netutil
 
 import (
 	"bufio"

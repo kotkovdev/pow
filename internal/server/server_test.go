@@ -9,9 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/kotkovdev/pow/internal/netutil"
 	"github.com/kotkovdev/pow/internal/server"
 	"github.com/kotkovdev/pow/internal/server/mocks"
-	"github.com/kotkovdev/pow/internal/util"
 	"github.com/kotkovdev/pow/pkg/challenger"
 )
 
@@ -31,7 +31,12 @@ func (s *serverSuite) SetupSuite() {
 }
 
 func (s *serverSuite) SetupTest() {
-	go s.srv.Serve(":8081")
+	go func() {
+		err := s.srv.Serve(":8081")
+		s.Require().NoError(err)
+	}()
+
+	// await to start server.
 	time.Sleep(time.Second)
 	var err error
 	s.client, err = net.Dial("tcp", ":8081")
@@ -50,14 +55,18 @@ func (s *serverSuite) TestServerSuccess() {
 	}, nil)
 	s.quoteService.EXPECT().GetRandomQuote().Return("quote", nil)
 
-	s.client.Write([]byte("\n"))
-	result, err := bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
+	_, err := s.client.Write([]byte("\n"))
+	s.NoError(err)
+
+	result, err := bufio.NewReader(s.client).ReadString(netutil.MessageDelimeter)
 
 	s.NoError(err)
 	s.Equal("ChQ=|MjxG\n", result)
 
-	s.client.Write([]byte("ChQe\n"))
-	result, err = bufio.NewReader(s.client).ReadString(util.MessageDelimeter)
+	_, err = s.client.Write([]byte("ChQe\n"))
+	s.NoError(err)
+
+	result, err = bufio.NewReader(s.client).ReadString(netutil.MessageDelimeter)
 
 	s.NoError(err)
 	s.Equal("quote\n", result)

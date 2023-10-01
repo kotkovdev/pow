@@ -7,7 +7,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/kotkovdev/pow/internal/util"
+	"github.com/kotkovdev/pow/internal/netutil"
 )
 
 const (
@@ -35,7 +35,10 @@ func (c Client) Close() error {
 
 func (c Client) RequestPuzzle() ([]byte, []byte, error) {
 	slog.Info("requesting puzzle")
-	c.send(nil)
+	if err := c.send(nil); err != nil {
+		slog.Error("unable to send request", "error", err)
+		return nil, nil, err
+	}
 
 	resp, err := c.read()
 	if err != nil {
@@ -43,7 +46,7 @@ func (c Client) RequestPuzzle() ([]byte, []byte, error) {
 	}
 	slog.Info("got response", "response", resp)
 
-	parts := strings.Split(resp, string(util.Separator))
+	parts := strings.Split(resp, string(netutil.Separator))
 	sourceStr, targetStr := parts[0], parts[1]
 	source, err := base64.StdEncoding.DecodeString(sourceStr)
 	if err != nil {
@@ -74,9 +77,9 @@ func (c Client) ReqeustQuote(payload string) ([]byte, error) {
 }
 
 func (c Client) send(body []byte) error {
-	return util.Send(body, c.conn)
+	return netutil.Send(body, c.conn)
 }
 
 func (c Client) read() (string, error) {
-	return util.Read(c.conn)
+	return netutil.Read(c.conn)
 }

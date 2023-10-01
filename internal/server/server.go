@@ -12,9 +12,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/kotkovdev/pow/internal/netutil"
 	"github.com/kotkovdev/pow/pkg/challenger"
-
-	"github.com/kotkovdev/pow/internal/util"
 )
 
 type QuotesService interface {
@@ -108,7 +107,7 @@ func (s *Server) Handle(ctx context.Context, conn net.Conn) {
 
 // handle handles incomming request.
 func (s *Server) handle(conn net.Conn) error {
-	body, err := util.Read(conn)
+	body, err := netutil.Read(conn)
 	if err != nil {
 		return err
 	}
@@ -133,22 +132,23 @@ func (s *Server) HandleConnection(conn net.Conn) {
 	}
 	encoder := base64.StdEncoding
 
+	sourceStr := encoder.EncodeToString(puzzle.Source)
+	targetStr := encoder.EncodeToString(puzzle.Target)
+	payloadHash := encoder.EncodeToString(puzzle.Original)
+
 	slog.Info(
 		"generated puzzle",
-		"source", encoder.EncodeToString(puzzle.Source),
-		"target", encoder.EncodeToString(puzzle.Target),
-		"original", encoder.EncodeToString(puzzle.Original),
+		"source", sourceStr,
+		"target", targetStr,
+		"original", payloadHash,
 	)
 
-	sourceMsg := []byte(encoder.EncodeToString(puzzle.Source))
-	targetMsg := []byte(encoder.EncodeToString(puzzle.Target))
-	message := append(append(sourceMsg, util.Separator), targetMsg...)
-	if err := util.Send(message, conn); err != nil {
+	message := append(append([]byte(sourceStr), netutil.Separator), []byte(targetStr)...)
+	if err := netutil.Send(message, conn); err != nil {
 		slog.Error(err.Error())
 		return
 	}
 
-	payloadHash := encoder.EncodeToString(puzzle.Original)
 	s.requests.Store(payloadHash, connection{
 		expires: time.Now().Add(requestDeadline),
 	})
@@ -182,8 +182,8 @@ func (s *Server) HandleSolution(body []byte, conn net.Conn) {
 		return
 	}
 
-	if err := util.Send([]byte(quote), conn); err != nil {
-		slog.Error("could not send response")
+	if err := netutil.Send([]byte(quote), conn); err != nil {
+		slog.Error("could not send response", "error", err)
 		return
 	}
 }

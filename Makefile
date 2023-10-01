@@ -9,3 +9,7 @@ client:
 .phony: test
 test:
 	go test ./... -race
+
+.phony: lint
+lint: 
+	golangci-lint run ./...
